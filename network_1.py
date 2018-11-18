@@ -155,15 +155,16 @@ class Router:
                 hosts.append(nbr)
             elif "R" in str(nbr):
                 routers.append(nbr)
-
+                
         routers = sorted(routers)
+        print(routers)
         hosts = sorted(hosts)
 
         #TODO: print the routes as a two dimensional table
         sort_rt = sorted(self.cost_D)
         # Prints top border
         rt_tbl = "╒══════"
-        for router in self.cost_D:
+        for neighbor in self.cost_D:
             rt_tbl += "╤══════"
         rt_tbl += "╕\n"
 
@@ -171,14 +172,16 @@ class Router:
         rt_tbl += "|%-6s" % self.name
         for neighbor in sort_rt:
             rt_tbl += "|%6s" % neighbor
-        # HERE is where I need to put printing each line. The below loop will
-        # also need to be in this loop, for each router to print it's distances
-        # and to calculate the distances for each host/router.
-        # prints in-between rows
         rt_tbl += "|\n├──────"
         for neighbor in self.cost_D:
             rt_tbl += "├──────"
         rt_tbl += "┤\n"
+        # HERE is where I need to put printing each line. The below loop will
+        # also need to be in this loop, for each router to print it's distances
+        # and to calculate the distances for each host/router.
+        # prints in-between rows
+        for router in routers:
+            rt_tbl += "|%-6s\n" % router
 
         # prints bottom border
         rt_tbl += "╘══════"
@@ -245,8 +248,8 @@ class Router:
     ## forward the packet according to the routing table
     #  @param p Packet containing routing information
     def update_routes(self, p, i):
-        print("{}: Received routing update from {} on interface {}.".format(self, p, i))
-        rt_table = json.loads(p.data_S)
+        #print("{}: Received routing update from {} on interface {}.".format(self, p, i))
+        #rt_table = json.loads(p.data_S)
         #TODO: add logic to update the routing tables and
         # possibly send out routing updates
         print('%s: Received routing update %s from interface %d' % (self, p, i))
