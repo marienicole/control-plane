@@ -141,12 +141,13 @@ class Router:
         #save neighbors and interfeces on which we connect to them
         self.cost_D = cost_D    # {neighbor: {interface: cost}}
         #TODO: set up the routing table for connected hosts
-        self.rt_tbl_D = calculate_routes({name:{name:0}}) # {destination: {router: cost}}
+        self.rt_tbl_D = self.calculate_routes({name:{name:0}}) # {destination: {router: cost}}
         print('%s: Initialized routing table' % self)
         self.print_routes()
 
 
     def calculate_routes(self, cur_table):
+        rt_table = cur_table
         lowest_cost = 999999999 # set to arbitrary gigantic value
         # calculate each of the distances to routers in table
         # the *neighbors* are stored in cost_D. We can use them to get distances to hosts from
@@ -156,19 +157,32 @@ class Router:
     ## Print routing table
     def print_routes(self):
         #TODO: print the routes as a two dimensional table
-        sort_rt = sorted(self.rt_tbl_D)
-
+        sort_rt = sorted(self.cost_D)
+        # Prints top border
         rt_tbl = "╒══════"
-        for router in self.rt_tbl_D:
+        for router in self.cost_D:
             rt_tbl += "╤══════"
         rt_tbl += "╕\n"
-        rt_tbl += "|%6s" % self.name)
 
+        # Prints router names horizontally
+        rt_tbl += "|%-6s" % self.name
         for router in sort_rt:
             rt_tbl += "|%6s" % router
 
-        print(self.rt_tbl_D)
+        # prints in-between rows
+        rt_tbl += "|\n├──────"
+        for router in self.cost_D:
+            rt_tbl += "├──────"
+        rt_tbl += "┤\n"
 
+        # prints bottom border
+        rt_tbl += "╘══════"
+        for router in self.cost_D:
+            rt_tbl += "╧══════"
+        rt_tbl += "╛"
+        print(rt_tbl)
+        print(self.cost_D)
+        print()
 
     ## called when printing the object
     def __str__(self):
