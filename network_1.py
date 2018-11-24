@@ -158,15 +158,13 @@ class Router:
         hosts = []
 
         for nbr in self.cost_D:
-            if "H" in nbr:
-                hosts.append(nbr)
-            elif "R" in str(nbr):
+            if "R" in str(nbr):
                 routers.append(nbr)
+            hosts.append(nbr)
 
-        #routers.append(self.name)
         routers = sorted(routers)
         hosts = sorted(hosts)
-
+        print(hosts)
         #TODO: print the routes as a two dimensional table
         sort_rt = sorted(self.cost_D)
         # Prints top border
@@ -183,15 +181,42 @@ class Router:
         for neighbor in sort_rt:
             rt_tbl += "├──────"
         rt_tbl += "┤\n"
-        # HERE is where I need to put printing each line. The below loop will
-        # also need to be in this loop, for each router to print it's distances
-        # and to calculate the distances for each host/router.
-        # prints in-between rows
-        #for router in routers:
+
         for router in routers:
-            rt_tbl += "|%-6s\n" % router
-            # if it's the last router, we don't want to print the bottom
-            # separator again
+            rt_tbl += "|%-6s" % router
+            for dest in hosts:
+                if dest == router: # if trying to go to self
+                    rt_tbl += "|%6s" % "0"
+                    continue
+                # printing for self
+                if router == self.name:
+                    if dest in self.cost_D:
+                        if '0' in self.cost_D[dest]:
+                            rt_tbl += "|%6s" % self.cost_D[dest]['0']
+                        elif '1' in self.cost_D[dest]:
+                            rt_tbl += "|%6s" % self.cost_D[dest]['0']
+                        else:
+                            rt_tbl += "|%6s" % "~"
+                    else:
+                        rt_tbl += "|%6s" % "~"
+
+
+                # printing for other routers
+                else:
+                    if 'rts' in self.cost_D[router]:
+                        if dest in self.cost_D[router]['rts']:
+                            if '0' in self.cost_D[router]['rts'][dest]:
+                                rt_tbl += "|%6s" % self.cost_D[router]['rts'][dest]['0']
+                            elif '1' in self.cost_D[router]['rts'][dest]:
+                                rt_tbl += "|%6s" % self.cost_D[router]['rts'][dest]['1']
+                        else:
+                            rt_tbl += "|%6s" % "~"
+                    else:
+                        if dest in self.cost_D[router]:
+                            rt_tbl += "|%6s" % dest
+                        else:
+                            rt_tbl += "|%6s" % " "
+            rt_tbl += "|\n"
             if router != routers[len(routers)-1]:
                 for neighbor in sort_rt:
                     rt_tbl += "├──────"
@@ -203,7 +228,7 @@ class Router:
             rt_tbl += "╧══════"
         rt_tbl += "╛"
         print(rt_tbl)
-        print(self.cost_D)
+        #print(self.cost_D)
         print()
 
     ## called when printing the object
@@ -250,7 +275,10 @@ class Router:
     def send_routes(self, i):
         # TODO: Send out a routing table update
         #create a routing table update packet
-        p = NetworkPacket(0, 'control', json.dumps(self.cost_D))
+        my_routes = {}
+        my_routes[self.name] = self.cost_D
+        print(my_routes)
+        p = NetworkPacket(0, 'control', json.dumps(my_routes))
         try:
             print('%s: sending routing update "%s" from interface %d' % (self, p, i))
             self.intf_L[i].put(p.to_byte_S(), 'out', True)
@@ -263,9 +291,16 @@ class Router:
     #  @param p Packet containing routing information
     def update_routes(self, p, i):
         routes = json.loads(p.data_S)
+        print("ROUTES:", routes, "\n")
         print(self.cost_D)
         for key in routes:
-            self.cost_D[key] = routes[key]
+            self.cost_D[key]['rts'] = routes[key]
+        # adding the values to the routing table by themselves
+            for val in routes[key]:
+                print(val, routes[key][val])
+                self.cost_D[val] = routes[key][val]
+        #TODO: Update costs. Hosts need to be routed through proper routers.
+        # H1: Through RA intf, cost of going throgh RA + cost of RA-> H1
         print(self.cost_D)
         print()
         #TODO: add logic to update the routing tables and
