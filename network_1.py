@@ -164,7 +164,7 @@ class Router:
 
         routers = sorted(routers)
         hosts = sorted(hosts)
-        print(hosts)
+
         #TODO: print the routes as a two dimensional table
         sort_rt = sorted(self.cost_D)
         # Prints top border
@@ -191,31 +191,46 @@ class Router:
                 # printing for self
                 if router == self.name:
                     if dest in self.cost_D:
-                        if '0' in self.cost_D[dest]:
-                            rt_tbl += "|%6s" % self.cost_D[dest]['0']
-                        elif '1' in self.cost_D[dest]:
-                            rt_tbl += "|%6s" % self.cost_D[dest]['0']
-                        else:
-                            rt_tbl += "|%6s" % "~"
+                        my_intf = list(self.cost_D[dest].keys())[0]
+                        rt_tbl += "|%6s" % self.cost_D[dest][my_intf]
                     else:
-                        rt_tbl += "|%6s" % "~"
+                        router_dist = list(self.cost_D[router].keys())[0]
+                        router_dist = self.cost_D[router][router_dist]
+
+                        host_dist = list(self.cost_D[dest].keys())[0]
+                        host_dist = self.cost_D[dest][host_dist]
+
+                        total_cost = router_dist + host_dist
+                        rt_tbl += "|%6s" % total_cost
 
 
                 # printing for other routers
                 else:
                     if 'rts' in self.cost_D[router]:
                         if dest in self.cost_D[router]['rts']:
-                            if '0' in self.cost_D[router]['rts'][dest]:
-                                rt_tbl += "|%6s" % self.cost_D[router]['rts'][dest]['0']
-                            elif '1' in self.cost_D[router]['rts'][dest]:
-                                rt_tbl += "|%6s" % self.cost_D[router]['rts'][dest]['1']
+                            my_intf = list(self.cost_D[router]['rts'][dest].keys())[0]
+                            rt_tbl += "|%6s" % self.cost_D[router]['rts'][dest][my_intf]
                         else:
-                            rt_tbl += "|%6s" % "~"
+                            router_dist = list(self.cost_D[router].keys())[0]
+                            router_dist = self.cost_D[router][router_dist]
+
+                            host_dist = list(self.cost_D[dest].keys())[0]
+                            host_dist = self.cost_D[dest][host_dist]
+
+                            total_cost = router_dist + host_dist
+                            rt_tbl += "|%6s" % total_cost
                     else:
                         if dest in self.cost_D[router]:
                             rt_tbl += "|%6s" % dest
                         else:
-                            rt_tbl += "|%6s" % " "
+                            router_dist = list(self.cost_D[router].keys())[0]
+                            router_dist = self.cost_D[router][router_dist]
+
+                            host_dist = list(self.cost_D[dest].keys())[0]
+                            host_dist = self.cost_D[dest][host_dist]
+
+                            total_cost = router_dist + host_dist
+                            rt_tbl += "|%6s" % total_cost
             rt_tbl += "|\n"
             if router != routers[len(routers)-1]:
                 for neighbor in sort_rt:
@@ -277,7 +292,6 @@ class Router:
         #create a routing table update packet
         my_routes = {}
         my_routes[self.name] = self.cost_D
-        print(my_routes)
         p = NetworkPacket(0, 'control', json.dumps(my_routes))
         try:
             print('%s: sending routing update "%s" from interface %d' % (self, p, i))
@@ -291,17 +305,14 @@ class Router:
     #  @param p Packet containing routing information
     def update_routes(self, p, i):
         routes = json.loads(p.data_S)
-        print("ROUTES:", routes, "\n")
-        print(self.cost_D)
-        for key in routes:
+        for key in routes: # key is the router it's coming from
+            updated_intf = list(self.cost_D[key].keys())[0]
             self.cost_D[key]['rts'] = routes[key]
         # adding the values to the routing table by themselves
             for val in routes[key]:
-                print(val, routes[key][val])
-                self.cost_D[val] = routes[key][val]
-        #TODO: Update costs. Hosts need to be routed through proper routers.
-        # H1: Through RA intf, cost of going throgh RA + cost of RA-> H1
-        print(self.cost_D)
+                current_intf = list(routes[key][val].keys())[0]
+                updated_cost = routes[key][val][current_intf] + self.cost_D[key][updated_intf]
+                self.cost_D[val] = {updated_intf:updated_cost}
         print()
         #TODO: add logic to update the routing tables and
         # possibly send out routing updates
