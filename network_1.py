@@ -141,9 +141,16 @@ class Router:
         #save neighbors and interfeces on which we connect to them
         self.cost_D = cost_D    # {neighbor: {interface: cost}}
         #TODO: set up the routing table for connected hosts
-        self.rt_tbl_D = cost_D # {destination: {router: cost}}
+        self.rt_tbl_D = {}#self.calculate_costs(cost_D) # {destination: {router: cost}}
         print('%s: Initialized routing table' % self)
         self.print_routes()
+
+    def calculate_costs(self, cost_D):
+        routing = {}
+        for name, intf_cost in cost_D:
+            for interface, cost in intf_cost:
+                self.routing[self.name][name] = [cost]
+        return routing
 
     ## Print routing table
     def print_routes(self):
@@ -155,16 +162,16 @@ class Router:
                 hosts.append(nbr)
             elif "R" in str(nbr):
                 routers.append(nbr)
-                
+
+        #routers.append(self.name)
         routers = sorted(routers)
-        print(routers)
         hosts = sorted(hosts)
 
         #TODO: print the routes as a two dimensional table
         sort_rt = sorted(self.cost_D)
         # Prints top border
         rt_tbl = "╒══════"
-        for neighbor in self.cost_D:
+        for neighbor in sort_rt:
             rt_tbl += "╤══════"
         rt_tbl += "╕\n"
 
@@ -173,19 +180,26 @@ class Router:
         for neighbor in sort_rt:
             rt_tbl += "|%6s" % neighbor
         rt_tbl += "|\n├──────"
-        for neighbor in self.cost_D:
+        for neighbor in sort_rt:
             rt_tbl += "├──────"
         rt_tbl += "┤\n"
         # HERE is where I need to put printing each line. The below loop will
         # also need to be in this loop, for each router to print it's distances
         # and to calculate the distances for each host/router.
         # prints in-between rows
+        #for router in routers:
         for router in routers:
             rt_tbl += "|%-6s\n" % router
+            # if it's the last router, we don't want to print the bottom
+            # separator again
+            if router != routers[len(routers)-1]:
+                for neighbor in sort_rt:
+                    rt_tbl += "├──────"
+                rt_tbl += "├──────┤\n"
 
         # prints bottom border
         rt_tbl += "╘══════"
-        for neighbor in self.cost_D:
+        for neighbor in sort_rt:
             rt_tbl += "╧══════"
         rt_tbl += "╛"
         print(rt_tbl)
@@ -236,7 +250,7 @@ class Router:
     def send_routes(self, i):
         # TODO: Send out a routing table update
         #create a routing table update packet
-        p = NetworkPacket(0, 'control', 'DUMMY_ROUTING_TABLE')
+        p = NetworkPacket(0, 'control', json.dumps(self.cost_D))
         try:
             print('%s: sending routing update "%s" from interface %d' % (self, p, i))
             self.intf_L[i].put(p.to_byte_S(), 'out', True)
@@ -248,8 +262,12 @@ class Router:
     ## forward the packet according to the routing table
     #  @param p Packet containing routing information
     def update_routes(self, p, i):
-        #print("{}: Received routing update from {} on interface {}.".format(self, p, i))
-        #rt_table = json.loads(p.data_S)
+        routes = json.loads(p.data_S)
+        print(self.cost_D)
+        for key in routes:
+            self.cost_D[key] = routes[key]
+        print(self.cost_D)
+        print()
         #TODO: add logic to update the routing tables and
         # possibly send out routing updates
         print('%s: Received routing update %s from interface %d' % (self, p, i))
