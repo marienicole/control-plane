@@ -285,6 +285,8 @@ class Router:
     ## forward the packet according to the routing table
     #  @param p Packet containing routing information
     def update_routes(self, p, i):
+#TODO: Change some of this logic, so that it only updates if the costs have changed.
+# not always updating
         print('%s: Received routing update %s from interface %d' % (self, p, i))
         routes = json.loads(p.data_S)
         for key in routes: # key is the router it's coming from
@@ -337,7 +339,7 @@ class Router:
             for router in routers:
                 if router != self.name:
                     intf = list(self.cost_D[router].keys())[0]
-                    #self.send_routes(int(intf))
+                    self.send_routes(int(intf))
         #TODO: add logic to update the routing tables and
         # possibly send out routing updates
 
