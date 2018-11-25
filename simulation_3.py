@@ -6,7 +6,7 @@ import sys
 
 ##configuration parameters
 router_queue_size = 0 #0 means unlimited
-simulation_time = 5   #give the network sufficient time to execute transfers
+simulation_time = 3   #give the network sufficient time to execute transfers
 
 if __name__ == '__main__':
     object_L = [] #keeps track of objects, so we can kill their threads at the end
@@ -18,19 +18,19 @@ if __name__ == '__main__':
     object_L.append(host_2)
 
     #create routers and cost tables for reaching neighbors
-    cost_D = {'H1': {0: 1}, 'RB': {1: 2}, 'RC': {2: 3}} # {neighbor: {interface: cost}}
+    cost_D = {'H1': {0: 3}, 'RB': {1: 1}, 'RC': {2: 1}} # {neighbor: {interface: cost}}
     router_a = network_3.Router(name='RA',
                               cost_D = cost_D,
                               max_queue_size=router_queue_size)
     object_L.append(router_a)
 
-    cost_D = {'RD': {1: 2}, 'RA': {0: 1}} # {neighbor: {interface: cost}}
+    cost_D = {'RD': {1: 1}, 'RA': {0: 1}} # {neighbor: {interface: cost}}
     router_b = network_3.Router(name='RB',
                               cost_D = cost_D,
                               max_queue_size=router_queue_size)
     object_L.append(router_b)
 
-    cost_D = {'RD': {1: 2}, 'RA': {0: 1}} # {neighbor: {interface: cost}}
+    cost_D = {'RD': {1: 3}, 'RA': {0: 1}} # {neighbor: {interface: cost}}
     router_c = network_3.Router(name='RC',
                               cost_D = cost_D,
                               max_queue_size=router_queue_size)
