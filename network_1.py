@@ -148,13 +148,6 @@ class Router:
         print('%s: Initialized routing table' % self)
         self.print_routes()
 
-    def calculate_costs(self, cost_D):
-        routing = {}
-        for name, intf_cost in cost_D:
-            for interface, cost in intf_cost:
-                self.routing[self.name][name] = [cost]
-        return routing
-
     # Print routing table
     def print_routes(self):
         routers = []
