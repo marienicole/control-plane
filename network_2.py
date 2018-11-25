@@ -1,6 +1,7 @@
 import queue
 import threading
 import json
+from copy import deepcopy
 
 ## wrapper class for a queue of packets
 class Interface:
@@ -139,25 +140,19 @@ class Router:
         #create a list of interfaces
         self.intf_L = [Interface(max_queue_size) for _ in range(len(cost_D))]
         #save neighbors and interfeces on which we connect to them
-        self.cost_D = cost_D    # {neighbor: {interface: cost}}
+        self.cost_D = deepcopy(cost_D)    # {neighbor: {interface: cost}}
+        self.temp_cost_D = deepcopy(cost_D)
         #TODO: set up the routing table for connected hosts
-        self.rt_tbl_D = {}#self.calculate_costs(cost_D) # {destination: {router: cost}}
+        self.rt_tbl_D = deepcopy(cost_D) #self.calculate_costs(cost_D) # {destination: {router: cost}}
         print('%s: Initialized routing table' % self)
         self.print_routes()
-
-    def calculate_costs(self, cost_D):
-        routing = {}
-        for name, intf_cost in cost_D:
-            for interface, cost in intf_cost:
-                self.routing[self.name][name] = [cost]
-        return routing
 
     ## Print routing table
     def print_routes(self):
         routers = []
         hosts = []
 
-        for nbr in self.cost_D:
+        for nbr in self.rt_tbl_D:
             if "R" in str(nbr):
                 routers.append(nbr)
             hosts.append(nbr)
@@ -166,68 +161,43 @@ class Router:
         hosts = sorted(hosts)
 
         #TODO: print the routes as a two dimensional table
-        sort_rt = sorted(self.cost_D)
+        sort_rt = sorted(self.rt_tbl_D)
         # Prints top border
         rt_tbl = "╒══════"
         for neighbor in sort_rt:
             rt_tbl += "╤══════"
-        rt_tbl += "╕\n"
-
         # Prints router names horizontally
-        rt_tbl += "|%-6s" % self.name
+        rt_tbl += "╕\n|%-6s" % self.name
         for neighbor in sort_rt:
             rt_tbl += "|%6s" % neighbor
         rt_tbl += "|\n├──────"
         for neighbor in sort_rt:
             rt_tbl += "├──────"
         rt_tbl += "┤\n"
-
         for router in routers:
             rt_tbl += "|%-6s" % router
             for dest in hosts:
                 if dest == router: # if trying to go to self
                     rt_tbl += "|%6s" % "0"
                     continue
-                # printing for self
                 if router == self.name:
-                    if dest in self.cost_D:
-                        my_intf = list(self.cost_D[dest].keys())[0]
-                        rt_tbl += "|%6s" % self.cost_D[dest][my_intf]
-                    else:
-                        router_dist = list(self.cost_D[router].keys())[0]
-                        router_dist = self.cost_D[router][router_dist]
-
-                        host_dist = list(self.cost_D[dest].keys())[0]
-                        host_dist = self.cost_D[dest][host_dist]
-
-                        total_cost = router_dist + host_dist
-                        rt_tbl += "|%6s" % total_cost
-
-
-                # printing for other routers
+                    if dest in self.rt_tbl_D:
+                        my_intf = list(self.rt_tbl_D[dest].keys())[0]
+                        rt_tbl += "|%6s" % self.rt_tbl_D[dest][my_intf]
                 else:
-                    if 'rts' in self.cost_D[router]:
-                        if dest in self.cost_D[router]['rts']:
-                            my_intf = list(self.cost_D[router]['rts'][dest].keys())[0]
-                            rt_tbl += "|%6s" % self.cost_D[router]['rts'][dest][my_intf]
-                        else:
-                            router_dist = list(self.cost_D[router].keys())[0]
-                            router_dist = self.cost_D[router][router_dist]
-
-                            host_dist = list(self.cost_D[dest].keys())[0]
-                            host_dist = self.cost_D[dest][host_dist]
-
-                            total_cost = router_dist + host_dist
-                            rt_tbl += "|%6s" % total_cost
+                    if 'rts' in self.rt_tbl_D[router]:
+                        if dest in self.rt_tbl_D[router]['rts']:
+                            my_intf = list(self.rt_tbl_D[router]['rts'][dest].keys())[0]
+                            rt_tbl += "|%6s" % self.rt_tbl_D[router]['rts'][dest][my_intf]
                     else:
-                        if dest in self.cost_D[router]:
+                        if dest in self.rt_tbl_D[router]:
                             rt_tbl += "|%6s" % dest
                         else:
-                            router_dist = list(self.cost_D[router].keys())[0]
-                            router_dist = self.cost_D[router][router_dist]
+                            router_dist = list(self.rt_tbl_D[router].keys())[0]
+                            router_dist = self.rt_tbl_D[router][router_dist]
 
-                            host_dist = list(self.cost_D[dest].keys())[0]
-                            host_dist = self.cost_D[dest][host_dist]
+                            host_dist = list(self.rt_tbl_D[dest].keys())[0]
+                            host_dist = self.rt_tbl_D[dest][host_dist]
 
                             total_cost = router_dist + host_dist
                             rt_tbl += "|%6s" % total_cost
@@ -277,6 +247,8 @@ class Router:
             # TODO: Here you will need to implement a lookup into the
             # forwarding table to find the appropriate outgoing interface
             # for now we assume the outgoing interface is 1
+            #out_intf = self.cost_D[p.dst]
+            #print(out_intf)
             self.intf_L[1].put(p.to_byte_S(), 'out', True)
             print('%s: forwarding packet "%s" from interface %d to %d' % \
                 (self, p, i, 1))
@@ -292,6 +264,7 @@ class Router:
         #create a routing table update packet
         my_routes = {}
         my_routes[self.name] = self.cost_D
+        print("in send_routes", self.cost_D)
         p = NetworkPacket(0, 'control', json.dumps(my_routes))
         try:
             print('%s: sending routing update "%s" from interface %d' % (self, p, i))
@@ -304,19 +277,61 @@ class Router:
     ## forward the packet according to the routing table
     #  @param p Packet containing routing information
     def update_routes(self, p, i):
+        print('%s: Received routing update %s from interface %d' % (self, p, i))
         routes = json.loads(p.data_S)
         for key in routes: # key is the router it's coming from
-            updated_intf = list(self.cost_D[key].keys())[0]
-            self.cost_D[key]['rts'] = routes[key]
+            self.rt_tbl_D[key]['rts'] = routes[key]
         # adding the values to the routing table by themselves
             for val in routes[key]:
-                current_intf = list(routes[key][val].keys())[0]
-                updated_cost = routes[key][val][current_intf] + self.cost_D[key][updated_intf]
-                self.cost_D[val] = {updated_intf:updated_cost}
-        print()
+                if val in self.cost_D and routes[key][val] == self.cost_D[val]:
+                    print('no need to update...')
+                if val not in self.cost_D or (val in self.rt_tbl_D and routes[key][val] != self.rt_tbl_D[val]):
+                    print(val, end = "")
+                    print(routes[key][val])
+                    updated_intf = list(self.temp_cost_D[key].keys())[0]
+                    print(updated_intf)
+                    current_intf = list(routes[key][val].keys())[0]
+                    updated_cost = routes[key][val][current_intf] + self.temp_cost_D[key][updated_intf]
+
+                    self.temp_cost_D[val] = {str(updated_intf):updated_cost}
+                    self.rt_tbl_D[val] = {str(updated_intf):updated_cost}
+        #print(self, "self.temp_cost_D after update: ", self.temp_cost_D)
+        #print(self, "self.cost_D after update: ", self.cost_D)
+        #print(self, "rt_tbl_D after update: ", self.rt_tbl_D)
+
+        dests = []
+        routers = []
+        for nbr in self.temp_cost_D:
+            if "R" in str(nbr):
+                routers.append(nbr)
+            dests.append(nbr)
+
+        for router in routers:
+            if router == self.name:
+                self.temp_cost_D[router] = {'0': 0}
+            for dest in dests:
+                if dest not in self.temp_cost_D and 'R' not in dest:
+                    intf = list(self.temp_cost_D[dest].keys())[0]
+                    router_dist = self.temp_cost_D[router][list(self.temp_cost_D[router].keys())[0]]
+                    host_dist = self.temp_cost_D[dest][list(self.temp_cost_D[dest].keys())[0]]
+                    total_cost = router_dist + host_dist
+                    self.temp_cost_D[dest] = {str(intf):total_cost}
+
+            if 'rts' in self.temp_cost_D[router]:
+                del self.temp_cost_D[router]['rts']
+
+        temp_copy_self = deepcopy(self.cost_D)
+        temp_copy_self[self.name] = self.temp_cost_D[self.name]
+        print("\nTemp_copy_self", temp_copy_self)
+        print("self.temp_cost_D", self.temp_cost_D, end="\n\n")
+        if self.temp_cost_D != temp_copy_self: # there were some changes made
+            self.cost_D = self.temp_cost_D
+            for router in routers:
+                if router != self.name:
+                    intf = list(self.cost_D[router].keys())[0]
+                    self.send_routes(int(intf))
         #TODO: add logic to update the routing tables and
         # possibly send out routing updates
-        print('%s: Received routing update %s from interface %d' % (self, p, i))
 
 
     ## thread target for the host to keep forwarding data

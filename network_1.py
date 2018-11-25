@@ -313,6 +313,7 @@ class Router:
                 current_intf = list(routes[key][val].keys())[0]
                 updated_cost = routes[key][val][current_intf] + self.cost_D[key][updated_intf]
                 self.cost_D[val] = {updated_intf:updated_cost}
+        print("\nself.cost_D after update: ", self.cost_D)
         print()
         #TODO: add logic to update the routing tables and
         # possibly send out routing updates
