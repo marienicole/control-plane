@@ -189,17 +189,14 @@ class Router:
                         if dest in self.rt_tbl_D[router]['rts']:
                             my_intf = list(self.rt_tbl_D[router]['rts'][dest].keys())[0]
                             rt_tbl += "|%6s" % self.rt_tbl_D[router]['rts'][dest][my_intf]
+                        else:
+                            total_cost = self.calculate_cost(router, dest)
+                            rt_tbl += "|%6s" % total_cost
                     else:
                         if dest in self.rt_tbl_D[router]:
                             rt_tbl += "|%6s" % dest
                         else:
-                            router_dist = list(self.rt_tbl_D[router].keys())[0]
-                            router_dist = self.rt_tbl_D[router][router_dist]
-
-                            host_dist = list(self.rt_tbl_D[dest].keys())[0]
-                            host_dist = self.rt_tbl_D[dest][host_dist]
-
-                            total_cost = router_dist + host_dist
+                            total_cost = self.calculate_cost(router, dest)
                             rt_tbl += "|%6s" % total_cost
             rt_tbl += "|\n"
             if router != routers[len(routers)-1]:
@@ -215,6 +212,17 @@ class Router:
         print(rt_tbl)
         #print(self.cost_D)
         print()
+
+    def calculate_cost(self, router, dest):
+        router_dist = list(self.rt_tbl_D[router].keys())[0]
+        router_dist = self.rt_tbl_D[router][router_dist]
+
+        host_dist = list(self.rt_tbl_D[dest].keys())[0]
+        host_dist = self.rt_tbl_D[dest][host_dist]
+
+        total_cost = router_dist + host_dist
+
+        return total_cost
 
     ## called when printing the object
     def __str__(self):
@@ -283,8 +291,6 @@ class Router:
             self.rt_tbl_D[key]['rts'] = routes[key]
         # adding the values to the routing table by themselves
             for val in routes[key]:
-                if val in self.cost_D and routes[key][val] == self.cost_D[val]:
-                    print('no need to update...')
                 if val not in self.cost_D or (val in self.rt_tbl_D and routes[key][val] != self.rt_tbl_D[val]):
                     print(val, end = "")
                     print(routes[key][val])
@@ -295,9 +301,9 @@ class Router:
 
                     self.temp_cost_D[val] = {str(updated_intf):updated_cost}
                     self.rt_tbl_D[val] = {str(updated_intf):updated_cost}
-        #print(self, "self.temp_cost_D after update: ", self.temp_cost_D)
-        #print(self, "self.cost_D after update: ", self.cost_D)
-        #print(self, "rt_tbl_D after update: ", self.rt_tbl_D)
+        print(self, "self.temp_cost_D after update: ", self.temp_cost_D)
+        print(self, "self.cost_D after update: ", self.cost_D)
+        print(self, "rt_tbl_D after update: ", self.rt_tbl_D)
 
         dests = []
         routers = []
@@ -309,6 +315,7 @@ class Router:
         for router in routers:
             if router == self.name:
                 self.temp_cost_D[router] = {'0': 0}
+                self.rt_tbl_D[router] = {'0': 0}
             for dest in dests:
                 if dest not in self.temp_cost_D and 'R' not in dest:
                     intf = list(self.temp_cost_D[dest].keys())[0]
@@ -316,9 +323,10 @@ class Router:
                     host_dist = self.temp_cost_D[dest][list(self.temp_cost_D[dest].keys())[0]]
                     total_cost = router_dist + host_dist
                     self.temp_cost_D[dest] = {str(intf):total_cost}
+                    self.rt_tbl_D[dest] = {str(intf):total_cost}
 
-            if 'rts' in self.temp_cost_D[router]:
-                del self.temp_cost_D[router]['rts']
+            # if 'rts' in self.temp_cost_D[router]:
+            #     del self.temp_cost_D[router]['rts']
 
         temp_copy_self = deepcopy(self.cost_D)
         temp_copy_self[self.name] = self.temp_cost_D[self.name]
@@ -329,7 +337,7 @@ class Router:
             for router in routers:
                 if router != self.name:
                     intf = list(self.cost_D[router].keys())[0]
-                    self.send_routes(int(intf))
+                    #self.send_routes(int(intf))
         #TODO: add logic to update the routing tables and
         # possibly send out routing updates
 
