@@ -184,7 +184,7 @@ class Router:
             if router not in self.rt_tbl_D:
                 for host in hosts:
                     rt_tbl += "|%6s" % "~"
-                rt_tbl += "\n"
+                rt_tbl += "|\n"
                 if router != routers[len(routers)-1]:
                     for host in hosts:
                         rt_tbl += "├──────"
